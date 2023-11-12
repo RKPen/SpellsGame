@@ -6,6 +6,9 @@
 #define MAX_SPELL_LENGTH 30
 #define MAX_SPELLS 78
 
+int counter = 0;
+
+// Function declarations
 int spellIsValid(const char *spell1, const char *spell2, const char spellsDone[][MAX_SPELL_LENGTH], int counter) {
     if (counter > 0 && spell1[0] != spellsDone[counter - 1][strlen(spellsDone[counter - 1]) - 1]) {
         return 3; // Spells don't match
@@ -100,11 +103,45 @@ const char *botHard(const char spellsDone[][MAX_SPELL_LENGTH], int counter, cons
     // If the predicted spell is not available or valid, fall back to the Medium strategy
     return botMedium(spellsDone, counter, availableSpells, numAvailableSpells);
 }
+// Function definitions
 
+void playerTurn(const char *player, const char opponent[][MAX_SPELL_LENGTH], const char availableSpells[][MAX_SPELL_LENGTH], int numAvailableSpells, char total_spells_used[][MAX_SPELL_LENGTH], int *counter) {
+    char spell[MAX_SPELL_LENGTH];
+    printf("%s please enter a spell: ", player);
+    scanf("%29s", spell);
+
+    int spellResult = spellIsValid(spell, opponent[*counter - 1], total_spells_used, *counter);
+    if (spellResult != 1) {
+        printf("Invalid spell, %s wins because of an invalid spell\n", (strcmp(player, "Bot") == 0) ? "You" : "Bot");
+        exit(0);
+    }
+
+    strcpy(total_spells_used[*counter], spell);
+    (*counter)++;
+}
+
+void botTurn(const char *bot, const char opponent[][MAX_SPELL_LENGTH], const char availableSpells[][MAX_SPELL_LENGTH], int numAvailableSpells, char total_spells_used[][MAX_SPELL_LENGTH], int *counter, int difficulty) {
+    const char *botSpell;
+
+    if (difficulty == 1)
+        botSpell = botEasy(total_spells_used, *counter, availableSpells, numAvailableSpells);
+    else if (difficulty == 2)
+        botSpell = botMedium(total_spells_used, *counter, availableSpells, numAvailableSpells);
+    else if (difficulty == 3)
+        botSpell = botHard(total_spells_used, *counter, availableSpells, numAvailableSpells);
+
+    if (botSpell == NULL) {
+        printf("No valid spells for the bot. You win!\n");
+        exit(0);
+    }
+
+    printf("%s's turn: %s\n", bot, botSpell);
+    strcpy(total_spells_used[*counter], botSpell);
+    (*counter)++;
+}
 int main() {
     char p1[MAX_SPELL_LENGTH], p2[] = "Bot"; // Bot as player 2
     char total_spells_used[MAX_SPELLS][MAX_SPELL_LENGTH];
-    int counter = 0;
     srand(time(NULL));
 
     // Read available spells from "spells.txt"
@@ -129,71 +166,32 @@ int main() {
 
     srand(time(NULL));
 
-    printf("%s goes first\n", (rand() % 2 == 0) ? p1 : p2);
-
-    printAvailableSpells(availableSpells, numAvailableSpells);
-
-    char spell1[MAX_SPELL_LENGTH], spell2[MAX_SPELL_LENGTH];
-
-    printf("%s please enter a spell: ", p1);
-    scanf("%29s", spell1);
-
-    if (!spellExists(spell1, availableSpells, numAvailableSpells)) {
-        printf("Invalid spell, %s wins because you entered a spell that doesn't exist\n", p2);
-        return 0;
-    }
-
-    strcpy(total_spells_used[counter], spell1);
-    counter++;
+    const char *startingPlayer = (rand() % 2 == 0) ? p1 : p2;
+    printf("%s goes first\n", startingPlayer);
 
     int difficulty;
-    printf("Choose bot difficulty level (1: Easy, 2: Medium, 3: Hard): ");
-    scanf("%d", &difficulty);
-
-    while (1) {
-        const char *botSpell;
-        if (strcmp(p2, "Bot") == 0) {
-            // Bot's turn based on the selected difficulty level
-            if (difficulty == 1)
-                botSpell = botEasy(total_spells_used, counter, availableSpells, numAvailableSpells);
-            else if (difficulty == 2)
-                botSpell = botMedium(total_spells_used, counter, availableSpells, numAvailableSpells);
-            else if (difficulty == 3)
-                botSpell = botHard(total_spells_used, counter, availableSpells, numAvailableSpells);
-
-            if (botSpell == NULL) {
-                printf("No valid spells for the bot. You win!\n");
-                break;
-            }
-            printf("%s's turn: %s\n", p2, botSpell);
-            strcpy(total_spells_used[counter], botSpell);
-            counter++;
-        } else {
-            printf("%s please enter a spell: ", p2);
-            scanf("%29s", spell2);
-
-            int spellResult = spellIsValid(spell2, spell1, total_spells_used, counter);
-            if (spellResult != 1) {
-                printf("Invalid spell, %s wins because of an invalid spell\n", p1);
-                break;
-            }
-
-            strcpy(total_spells_used[counter], spell2);
-            counter++;
-        }
-
+    if (strcmp(startingPlayer, p1) == 0) {
+        // Player goes first
         printf("%s please enter a spell: ", p1);
-        scanf("%29s", spell1);
-
-        int spellResult = spellIsValid(spell1, spell2, total_spells_used, counter);
-        if (spellResult != 1) {
-            printf("Invalid spell, %s wins because of an invalid spell\n", p2);
-            break;
-        }
-
-        strcpy(total_spells_used[counter], spell1);
+        scanf("%29s", total_spells_used[counter]);
         counter++;
+
+        printf("Choose bot difficulty level (1: Easy, 2: Medium, 3: Hard): ");
+        scanf("%d", &difficulty);
+        botTurn(p2, total_spells_used, availableSpells, numAvailableSpells, total_spells_used, &counter, difficulty);
+    } else {
+        // Bot goes first
+        printf("Choose bot difficulty level (1: Easy, 2: Medium, 3: Hard): ");
+        scanf("%d", &difficulty);
+        botTurn(p2, total_spells_used, availableSpells, numAvailableSpells, total_spells_used, &counter, difficulty);
+    }
+
+    // Continue the game
+    while (1) {
+        playerTurn(p1, total_spells_used, availableSpells, numAvailableSpells, total_spells_used, &counter);
+        botTurn(p2, total_spells_used, availableSpells, numAvailableSpells, total_spells_used, &counter, difficulty);
     }
 
     return 0;
 }
+
